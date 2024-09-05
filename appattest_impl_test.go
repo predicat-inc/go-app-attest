@@ -136,10 +136,9 @@ func FuzzAttestationData(f *testing.F) {
 		OutAuthenticatorData: &out,
 	}
 
-	var startTime time.Time
 	f.Fuzz(func(t *testing.T, attestorData []byte) {
 		req.AttestationCBOR = attestorData // fuzzer will provide the input
-		startTime = time.Now()
+		startTime := time.Now()
 		_ = attestor.Attest(&req)
 
 		// verifying should be a relatively fast operation
