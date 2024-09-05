@@ -123,6 +123,11 @@ func SubtleAttest(in *SubtleAttestInput) Output {
 }
 
 func populateVerifyOpts(dst *x509.VerifyOptions, attObj *AttestationObject, aaroots *x509.CertPool) (err error) {
+
+	if len(attObj.AttestationStatement.X509CertChain) < 1 {
+		return errors.New("expected at least one certificate in x509 cert chain")
+	}
+
 	// set the intermediates
 	dst.Intermediates = x509.NewCertPool()
 	// skip the first element, it's the leaf certificate
