@@ -67,7 +67,7 @@ func TestAppAttestDev(t *testing.T) {
 
 	attestor, err := appattest.New(
 		appattest.WithNowFn(nowFn),
-		appattest.WithBundleIDHash(bundleIDHash[:]),
+		appattest.WithBundleIDHash(bundleIDHash),
 		appattest.WithEnvironment(appattest.EnvironmentDev),
 	)
 	require.NoError(t, err)
@@ -120,7 +120,7 @@ func FuzzAttestationData(f *testing.F) {
 
 	attestor, err := appattest.New(
 		appattest.WithNowFn(nowFn),
-		appattest.WithBundleIDHash(bundleIDHash[:]),
+		appattest.WithBundleIDHash(bundleIDHash),
 		appattest.WithEnvironment(appattest.EnvironmentDev),
 	)
 	require.NoError(f, err)

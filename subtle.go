@@ -8,10 +8,15 @@ import (
 	"encoding/asn1"
 	"fmt"
 	"reflect"
+	"slices"
 	"time"
 
 	"github.com/fxamacker/cbor/v2"
 	"github.com/pkg/errors"
+)
+
+const (
+	Format = "apple-appattest"
 )
 
 type SubtleAttestInput struct {
@@ -30,6 +35,11 @@ func SubtleAttest(in *SubtleAttestInput) Output {
 	err := cbor.Unmarshal(in.AttestationInput.AttestationCBOR, &attestObj)
 	if err != nil {
 		return Output{Err: errors.Wrap(err, "unmarshalling attestation object")}
+	}
+
+	// ensure format is correct
+	if attestObj.Format != Format {
+		return Output{Err: fmt.Errorf("attestation object format mismatch: expected '%s', got '%s'", Format, attestObj.Format)}
 	}
 
 	// create a new cert verifier using the intermediates provided in the attestation object
@@ -55,29 +65,14 @@ func SubtleAttest(in *SubtleAttestInput) Output {
 	// > to your app before performing the attestation,
 	// > and append that hash to the end of the authenticator data (authData from the decoded object).
 	// > 3. Generate a new SHA256 hash of the composite item to create nonce.
-
-	nonceDigest := sha256.New()
-	if _, err = nonceDigest.Write(attestObj.AuthData); err != nil {
-		return Output{Err: errors.Wrap(err, "writing auth data to digest")}
-	}
-
-	// Heads up: this deviates from what the documentation says. The documentation says to append the checksum of the server challenge to the auth data
-	// but in practice it appends the server challenge itself to the auth data.
-	// I figured it out by comparing the expected values against the implementation-generated values.
-	if _, err := nonceDigest.Write([]byte(in.AttestationInput.ServerChallenge)); err != nil {
-		return Output{Err: errors.Wrap(err, "writing challenge checksum to digest")}
-	}
-
-	var nonceBacking [sha256.Size]byte
-	nonce := nonceBacking[:]
-	nonceDigest.Sum(nonce[:0])
+	nonce, err := ComputeNonce(attestObj.AuthData, in.AttestationInput.ServerChallenge)
 
 	nonceFromCert, err := extractNonceFromCert(leafCert)
 	if err != nil {
 		return Output{Err: errors.Wrap(err, "extracting nonce from leaf certificate")}
 	}
 
-	if !bytes.Equal(nonceFromCert, nonce) {
+	if !bytes.Equal(nonceFromCert, nonce[:]) {
 		return Output{Err: errors.New("nonce from cert did not match computed nonce")}
 	}
 
@@ -86,7 +81,7 @@ func SubtleAttest(in *SubtleAttestInput) Output {
 		return Output{Err: fmt.Errorf("downcasting pubkey: unexpected type '%s'", reflect.TypeOf(leafCert.PublicKey))}
 	}
 
-	computedPubkeyHash := sha256.Sum256(ellipticPointToX962Uncompressed(certPubKey))
+	computedPubkeyHash := ComputeKeyHash(certPubKey)
 
 	// assert that the public key of the leaf certificate matches the key handle returned by the app
 	if !bytes.Equal(in.AttestationInput.KeyIdentifier, computedPubkeyHash[:]) {
@@ -146,7 +141,7 @@ func populateVerifyOpts(dst *x509.VerifyOptions, attObj *AttestationObject, aaro
 func extractNonceFromCert(c *x509.Certificate) ([]byte, error) {
 	var oidValue []byte
 	for _, ext := range c.Extensions {
-		if nonceoid.EqualASN1OID(ext.Id) {
+		if slices.Equal(NonceOID, ext.Id) {
 			oidValue = ext.Value
 			break
 		}
@@ -156,7 +151,7 @@ func extractNonceFromCert(c *x509.Certificate) ([]byte, error) {
 		return nil, errors.New("could not find nonce oid")
 	}
 
-	nc := asn1AANonceContainer{}
+	nc := ASN1AANonceContainer{}
 	if _, err := asn1.Unmarshal(oidValue, &nc); err != nil {
 		return nil, err
 	}
@@ -175,7 +170,7 @@ type AttestationStatement struct {
 	Receipt       []byte   `cbor:"receipt"`
 }
 
-type asn1AANonceContainer struct {
+type ASN1AANonceContainer struct {
 	Nonce []byte `asn1:"tag:1,explicit"`
 }
 
@@ -190,15 +185,37 @@ func ellipticPointToX962Uncompressed(pub *ecdsa.PublicKey) []byte {
 	return x962Bytes
 }
 
+func ComputeNonce(authData, serverChallenge []byte) (res [sha256.Size]byte, err error) {
+	nonceDigest := sha256.New()
+	if _, err = nonceDigest.Write(authData); err != nil {
+		err = errors.Wrap(err, "writing auth data to digest")
+		return
+	}
+
+	// Heads up: this deviates from what the documentation says. The documentation says to append the checksum of the server challenge to the auth data
+	// but in practice it appends the server challenge itself to the auth data.
+	// I figured it out by comparing the expected values against the implementation-generated values.
+	if _, err = nonceDigest.Write(serverChallenge); err != nil {
+		err = errors.Wrap(err, "writing challenge checksum to digest")
+		return
+	}
+
+	nonceDigest.Sum(res[:0])
+	return
+}
+
+func ComputeKeyHash(key *ecdsa.PublicKey) [sha256.Size]byte {
+	return sha256.Sum256(ellipticPointToX962Uncompressed(key))
+}
+
 var (
-	nonceoid   x509.OID
+	NonceOID   = asn1.ObjectIdentifier{1, 2, 840, 113635, 100, 8, 2}
 	AAGUIDProd = []byte("appattest\x00\x00\x00\x00\x00\x00\x00")
 	AAGUIDDev  = []byte("appattestdevelop")
 )
 
 func init() {
 	var err error
-	nonceoid, err = x509.ParseOID("1.2.840.113635.100.8.2")
 	if err != nil {
 		panic(err)
 	}

@@ -54,7 +54,7 @@ func UnmarshalIntoAttestedCredentialData(src []byte, dst *AttestedCredentialData
 
 	dec := cbor.NewDecoder(bytes.NewReader(src[18+credLen:]))
 
-	if err = dec.Decode(&dst.CredentialPublicKey); err != nil {
+	if err := dec.Decode(&dst.CredentialPublicKey); err != nil {
 		return nil, err
 	}
 
