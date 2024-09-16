@@ -66,6 +66,9 @@ func SubtleAttest(in *SubtleAttestInput) Output {
 	// > and append that hash to the end of the authenticator data (authData from the decoded object).
 	// > 3. Generate a new SHA256 hash of the composite item to create nonce.
 	nonce, err := ComputeNonce(attestObj.AuthData, in.AttestationInput.ServerChallenge)
+	if err != nil {
+		return Output{Err: errors.Wrap(err, "computing nonce")}
+	}
 
 	nonceFromCert, err := extractNonceFromCert(leafCert)
 	if err != nil {
