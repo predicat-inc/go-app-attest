@@ -41,14 +41,13 @@ func main() {
 	}
 
 	// Prepare attestation input
-	req := appattest.Input{
+	req := appattest.VerifyAttestationInput{
 		ServerChallenge: []byte("YOUR_SERVER_CHALLENGE"),
 		AttestationCBOR: []byte("YOUR_ATTESTATION_DATA"),
-		KeyIdentifier:   []byte("YOUR_ATTESTED_KEY_IDENTIFIER"),
 	}
 
 	// Perform attestation
-	res := attestor.Attest(&req)
+	res := attestor.VerifyAttestation(&req)
 	if res.Err != nil {
 		log.Fatalf("attestation: %v", res.Err)
 	}
