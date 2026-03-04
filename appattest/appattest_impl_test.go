@@ -43,6 +43,13 @@ func TestAppAttest(t *testing.T) {
 	assert.True(t, validInstant.Before(res.LeafCert.NotAfter))
 	assert.True(t, validInstant.After(res.LeafCert.NotBefore))
 	assert.Equal(t, keyIdentifier, res.KeyID)
+
+	require.NotNil(t, res.DeviceInfo)
+	assert.Equal(t, "18.0", res.DeviceInfo.OSVersion)
+	assert.Equal(t, "22A244b", res.DeviceInfo.OSBuild)
+	assert.Equal(t, "iphoneos", res.DeviceInfo.Platform)
+	assert.Equal(t, "Internal", res.DeviceInfo.BuildVariant)
+	require.NotNil(t, res.DeviceInfo.DeviceClass)
 }
 
 func TestAppAttestDev(t *testing.T) {
@@ -76,6 +83,10 @@ func TestAppAttestDev(t *testing.T) {
 	assert.True(t, validInstant.Before(res.LeafCert.NotAfter))
 	assert.True(t, validInstant.After(res.LeafCert.NotBefore))
 	assert.Equal(t, keyIdentifier, res.KeyID)
+
+	require.NotNil(t, res.DeviceInfo)
+	assert.Equal(t, "17.6.1", res.DeviceInfo.OSVersion)
+	assert.Equal(t, "21G93", res.DeviceInfo.OSBuild)
 }
 
 func FuzzAttestationData(f *testing.F) {

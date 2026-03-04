@@ -42,6 +42,10 @@ type VerifyAttestationOutput struct {
 	EnvironmentGUID Environment
 	BundleDigest    []byte
 	KeyID           []byte
+
+	// DeviceInfo contains device and OS metadata extracted from the leaf
+	// certificate. Nil if the extension is absent or unparseable.
+	DeviceInfo *DeviceInfo
 }
 
 // AttestedPubkey returns the key from the leaf certificate
@@ -130,6 +134,8 @@ func VerifyAttestationPure(in *VerifyAttestationInputPure) (VerifyAttestationOut
 		EnvironmentGUID: authenticatorData.AttestedCredentialData.AAGUID,
 		BundleDigest:    authenticatorData.RelayingPartyHash,
 		KeyID:           computedPubkeyHash[:],
+
+		DeviceInfo: parseDeviceInfo(leafCert),
 	}, nil
 }
 
