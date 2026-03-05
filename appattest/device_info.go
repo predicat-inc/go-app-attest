@@ -56,10 +56,10 @@ type DeviceInfo struct {
 	BuildVariant string
 }
 
-// parseDeviceInfo attempts to extract DeviceInfo from the leaf certificate.
+// ParseDeviceInfo attempts to extract DeviceInfo from the leaf certificate.
 // Returns nil if the extension is not present. Parsing is best-effort:
 // unrecognized or malformed fields are silently skipped.
-func parseDeviceInfo(cert *x509.Certificate) *DeviceInfo {
+func ParseDeviceInfo(cert *x509.Certificate) *DeviceInfo {
 	var extValue []byte
 	for _, ext := range cert.Extensions {
 		if ext.Id.Equal(oidDeviceInfo) {

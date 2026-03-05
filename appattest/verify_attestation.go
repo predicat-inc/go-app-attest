@@ -135,7 +135,7 @@ func VerifyAttestationPure(in *VerifyAttestationInputPure) (VerifyAttestationOut
 		BundleDigest:    authenticatorData.RelayingPartyHash,
 		KeyID:           computedPubkeyHash[:],
 
-		DeviceInfo: parseDeviceInfo(leafCert),
+		DeviceInfo: ParseDeviceInfo(leafCert),
 	}, nil
 }
 
